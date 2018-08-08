@@ -1,0 +1,7 @@
+Link Tracking example iRule
+----
+To understand how this works, please see this DevCentral article series by Joe Pruitt.
+https://devcentral.f5.com/articles/link-tracking-with-irules-part-1
+https://devcentral.f5.com/articles/link-tracking-with-irules-part-2-filtering-results
+https://devcentral.f5.com/articles/link-tracking-with-irules-part-3-uri-filtering
+
