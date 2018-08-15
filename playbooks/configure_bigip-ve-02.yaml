@@ -1,0 +1,106 @@
+---
+- hosts: localhost
+  tasks:
+  - name: add backplane vlan to device
+    bigip_vlan:
+      validate_certs: no
+      server: bigip-ve-02
+      user: admin
+      password: admin
+      name: bplane
+      untagged_interface: 1.3
+  
+  - name: add external vlan to device
+    bigip_vlan:
+      validate_certs: no
+      server: bigip-ve-02
+      user: admin
+      password: admin
+      name: outside
+      untagged_interface: 1.1
+
+  - name: add internal vlan to device
+    bigip_vlan:
+      validate_certs: no
+      server: bigip-ve-02
+      user: admin
+      password: admin
+      name: inside
+      untagged_interface: 1.2
+
+  - name: add self-IP for backplane vlan
+    bigip_selfip:
+      validate_certs: no
+      server: bigip-ve-02
+      user: admin
+      password: admin
+      name: "bplane.self"
+      address: 10.245.4.5
+      netmask: 255.255.255.0
+      vlan: bplane
+
+  - name: add self-IP for external vlan
+    bigip_selfip:
+      validate_certs: no
+      server: bigip-ve-02
+      user: admin
+      password: admin
+      name: "outside.self"
+      address: 10.245.2.5
+      netmask: 255.255.255.0
+      vlan: outside
+
+  - name: add self-IP for internal vlan
+    bigip_selfip:
+      validate_certs: no
+      server: bigip-ve-02
+      user: admin
+      password: admin
+      name: "inside.self"
+      address: 10.245.3.5
+      netmask: 255.255.255.0
+      vlan: inside
+
+  - name: add pool deb-servers
+    bigip_pool:
+      validate_certs: no
+      server: bigip-ve-02
+      user: admin
+      password: admin
+      name: "deb-servers"
+      state: present
+      partition: Common
+      lb_method: round-robin
+
+  - name: add host to pool deb-servers
+    bigip_pool_member:
+      validate_certs: no
+      server: bigip-ve-02
+      user: admin
+      password: admin
+      pool: "deb-servers"
+      state: present
+      partition: Common
+      host: 10.245.3.3
+      port: 80
+
+  - name: add app02_https VS
+    bigip_virtual_server:
+      validate_certs: no
+      server: bigip-ve-02
+      user: admin
+      password: admin
+      state: present
+      partition: Common
+      name: app02_https
+      destination: 10.245.2.101
+      port: 443
+      pool: deb-servers
+      snat: Automap
+      description: "clientssl listener for app02"
+      profiles:
+        - name: clientssl
+          context: clientside
+        - http
+        - tcp
+
