@@ -12,6 +12,7 @@ import json
 # constants
 HOST = "bigip-ve-01"
 URI_VS_LIST = "/mgmt/tm/ltm/virtual/"
+URI_POOL = "/mgmt/tm/ltm/pool/~Common~deb-servers/members/"
 STATS_LOC = "/stats/"
 USERNAME = "admin"
 PASSWORD = "admin"
@@ -29,7 +30,7 @@ def get_rest_data(host, uri):
 	return requests.get(full_path, auth=(USERNAME, PASSWORD))
 
 
-def get_stats(d):
+def get_vs_stats(d):
 	# we want the nested dict at key 'entries'
 	entries = d['entries']
 	
@@ -63,6 +64,16 @@ def get_stats(d):
 	v_c_conn_cur = stats['clientside.curConns'].values().pop()
 	v_c_conn_max = stats['clientside.maxConns'].values().pop()
 	
+	# if you poll a device that hasn't received traffic, you'll have zeros. handle it
+	try:
+		v_c_pkt_size_in = (v_c_bits_in / 8.0) / v_c_pkts_in
+	except ZeroDivisionError:
+		v_c_pkt_size_in = 0
+	try:
+		v_c_pkt_size_out = (v_c_bits_out / 8.0) / v_c_pkts_out
+	except ZeroDivisionError:
+		v_c_pkt_size_out = 0
+	
 	print "From:           ", v_self_link
 	print "Enabled state:  ", v_state
 	print "Why:            ", v_reason
@@ -73,11 +84,21 @@ def get_stats(d):
 	print "Packets in:     ", v_c_pkts_in
 	print "Packets out:    ", v_c_pkts_out
 	
-	print "Packet size in: ", round((v_c_bits_in / 8.0) / v_c_pkts_in, 2), "bytes"
-	print "Packet size out:", round((v_c_bits_in / 8.0) / v_c_pkts_out, 2), "bytes"
+	print "Packet size in: ", round(v_c_pkt_size_in, 2), "bytes"
+	print "Packet size out:", round(v_c_pkt_size_out, 2), "bytes"
 
 	print "Current conns:  ", v_c_conn_cur
 	print "Max conns:      ", v_c_conn_max
+
+
+def get_pool_member_health(d):
+	 print "Pool deb-servers members"
+	 items = d['items']
+	 # print type(items)
+	 for i in items:
+	 	# for k,v in i.items():
+		# 	print k,v
+		print "name:", i['name'], "address:", i['address'], "state:", i['state']
 
 
 def main():
@@ -98,12 +119,17 @@ def main():
 	for item in vs_names:
 		uri_query = URI_VS_LIST + item + STATS_LOC
 		resp = get_rest_data(HOST, uri_query)
-		r = resp.json()
+		j = resp.json()
 
-		# walk_dict(r)
 		print "virtual server: ", item # vs name
-		get_stats(r)
+		get_vs_stats(j)
 		print # trailing newline
+	
+	# quick health information for every pool
+	resp = get_rest_data(HOST, URI_POOL)
+	j = resp.json()
+	get_pool_member_health(j)
+	print
 
 
 if __name__ == "__main__":
