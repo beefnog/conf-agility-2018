@@ -1,0 +1,15 @@
+---
+- hosts: localhost
+  tasks:
+  - name: add instrumentation rules to client-ssl VS app01_https
+    bigip_virtual_server:
+      validate_certs: no
+      server: bigip-ve-01
+      user: admin
+      password: admin
+      name: app01_https
+      irules:
+        - http_response_time
+        - ssl_debugging
+        - tcp_stream_stats
+
